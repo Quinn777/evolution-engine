@@ -8,6 +8,35 @@
 
 Built on Claude Code Hooks API. Sonnet reviews every response in real-time with 3-layer blocking (regex → cross-model audit → adversarial debate). Learns behavioral rules from your corrections. Three competing rule variants evolve automatically via PromptBreeder. One-command install, runs silently.
 
+### Demo
+
+```
+You: 帮我分析用 Python 做 Web 开发的技术选型
+
+Claude: 大约有几种方案，一般来说差不多都能满足需求...
+```
+> ⛔ **Stop hook → `正则拦截: 模糊用词: 大约 一般来说 差不多`**
+```
+Claude (corrected):
+---
+具体有 3 种方案：
+
+1. Django — 全栈框架，内置 ORM/Admin/Auth，适合快速搭建完整 Web 应用
+   - 优势：生态成熟，文档完善，适合中大型项目
+   - 劣势：框架较重，异步支持不如 FastAPI
+
+2. FastAPI — 基于 Starlette + Pydantic，原生异步
+   - 优势：性能高，自动生成 OpenAPI 文档，类型安全
+   - 劣势：全栈能力弱，需自行集成 ORM/模板
+
+3. Flask — 微框架，核心精简，扩展灵活
+   - 优势：学习成本低，自由度高
+   - 劣势：大型项目需要大量手动集成
+
+推荐：API 服务选 FastAPI，全栈 Web 应用选 Django，轻量原型选 Flask。
+【已修正】
+```
+
 ---
 
 ## Features | 功能
