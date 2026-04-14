@@ -364,14 +364,14 @@ fi
 
 SEARCH_CHECK_ENABLED=$(grep -o '"quiet_mode": *true' "$CONFIG" 2>/dev/null)
 if [ -n "$SEARCH_CHECK_ENABLED" ] && [ -f "$PYTHON" ] && [ -n "$USER_QUESTION" ]; then
-  RESP_FILE=$(mktemp)
-  printf '%s' "$RESPONSE" > "$RESP_FILE"
-  SEARCH_BLOCK=$(PYTHONUTF8=1 _EVO_TP="$TRANSCRIPT_PATH" _EVO_UQ="$USER_QUESTION" _EVO_RF="$RESP_FILE" "$PYTHON" -c "
+  # 截取响应前 3000 字符用于搜索特征检测（URL/Sources 一定出现在前部）
+  RESP_PREVIEW="${RESPONSE:0:3000}"
+  SEARCH_BLOCK=$(PYTHONUTF8=1 _EVO_TP="$TRANSCRIPT_PATH" _EVO_UQ="$USER_QUESTION" _EVO_RESP="$RESP_PREVIEW" "$PYTHON" -c "
 import json, os
 
 tp = os.environ.get('_EVO_TP', '')
 uq = os.environ.get('_EVO_UQ', '')
-rf = os.environ.get('_EVO_RF', '')
+resp = os.environ.get('_EVO_RESP', '')
 
 if not uq:
     exit(0)
@@ -393,16 +393,12 @@ if not question_needs_search:
 has_search = False
 
 # 检测方式1：回答文本中包含搜索结果特征
-if rf and os.path.exists(rf):
-    try:
-        resp = open(rf, 'r', encoding='utf-8', errors='replace').read()
-        search_indicators = ['https://', 'http://', 'Sources:', 'Source:', '搜索结果',
-                             '根据搜索', 'according to', 'based on search',
-                             'github.com/', '.io/', '.com/']
-        if any(ind in resp for ind in search_indicators):
-            has_search = True
-    except:
-        pass
+if resp:
+    search_indicators = ['https://', 'http://', 'Sources:', 'Source:', '搜索结果',
+                         '根据搜索', 'according to', 'based on search',
+                         'github.com/', '.io/', '.com/']
+    if any(ind in resp for ind in search_indicators):
+        has_search = True
 
 # 检测方式2：transcript 中有 WebSearch/WebFetch/Agent 调用
 if not has_search and tp and os.path.exists(tp):
@@ -431,7 +427,6 @@ if not has_search and tp and os.path.exists(tp):
 if not has_search:
     print('BLOCK')
 " 2>/dev/null)
-  rm -f "$RESP_FILE"
 
   if [ "$SEARCH_BLOCK" = "BLOCK" ]; then
     if [ -f "$PYTHON" ]; then
