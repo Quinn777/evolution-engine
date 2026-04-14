@@ -10,6 +10,40 @@ Built on Claude Code Hooks API. Sonnet reviews every response in real-time with 
 
 ### Demo
 
+**Regex blocking — vague language detected and forced rewrite | 正则拦截 — 检测模糊用词并强制重写：**
+
+```
+You: Analyze Python web framework options for my project.
+
+Claude: There are approximately several frameworks, generally speaking they're
+        all about the same...
+```
+> ⛔ **Stop hook → `Regex block: vague words detected: approximately, generally speaking`**
+```
+Claude (corrected):
+---
+3 specific options:
+
+1. Django — full-stack, built-in ORM/Admin/Auth
+   - Pros: mature ecosystem, great docs, suits mid-to-large projects
+   - Cons: heavier framework, async support weaker than FastAPI
+
+2. FastAPI — async-native, based on Starlette + Pydantic
+   - Pros: high performance, auto-generates OpenAPI docs, type-safe
+   - Cons: no built-in template/ORM, requires manual integration
+
+3. Flask — micro-framework, minimal core, flexible extensions
+   - Pros: low learning curve, maximum freedom
+   - Cons: large projects need significant manual wiring
+
+Recommendation: FastAPI for API services, Django for full-stack web apps,
+Flask for lightweight prototypes.
+【已修正】
+```
+
+<details>
+<summary>中文版 Demo</summary>
+
 ```
 You: 帮我分析用 Python 做 Web 开发的技术选型
 
@@ -21,7 +55,7 @@ Claude (corrected):
 ---
 具体有 3 种方案：
 
-1. Django — 全栈框架，内置 ORM/Admin/Auth，适合快速搭建完整 Web 应用
+1. Django — 全栈框架，内置 ORM/Admin/Auth
    - 优势：生态成熟，文档完善，适合中大型项目
    - 劣势：框架较重，异步支持不如 FastAPI
 
@@ -36,6 +70,8 @@ Claude (corrected):
 推荐：API 服务选 FastAPI，全栈 Web 应用选 Django，轻量原型选 Flask。
 【已修正】
 ```
+
+</details>
 
 ---
 
