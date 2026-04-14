@@ -357,20 +357,23 @@ fi
 
 # ================================================================
 # 强制搜索检查：涉及技术/工具/方案/数据的问题，必须先搜索再回答
-# 从 transcript 检查是否调用了 WebSearch/WebFetch，
-# 如果用户问题包含技术关键词但没搜索，拦截
+# 双重检测：1) transcript 中有无 WebSearch/WebFetch 调用
+#           2) 回答文本中有无搜索结果特征（URL、Sources 等）
+# 两者任一命中则视为已搜索
 # ================================================================
 
 SEARCH_CHECK_ENABLED=$(grep -o '"quiet_mode": *true' "$CONFIG" 2>/dev/null)
-# 只在有 transcript 且有 Python 时执行
-if [ -n "$SEARCH_CHECK_ENABLED" ] && [ -n "$TRANSCRIPT_PATH" ] && [ -f "$PYTHON" ] && [ -n "$USER_QUESTION" ]; then
-  SEARCH_BLOCK=$(PYTHONUTF8=1 _EVO_TP="$TRANSCRIPT_PATH" _EVO_UQ="$USER_QUESTION" "$PYTHON" -c "
-import json, os, re
+if [ -n "$SEARCH_CHECK_ENABLED" ] && [ -f "$PYTHON" ] && [ -n "$USER_QUESTION" ]; then
+  RESP_FILE=$(mktemp)
+  printf '%s' "$RESPONSE" > "$RESP_FILE"
+  SEARCH_BLOCK=$(PYTHONUTF8=1 _EVO_TP="$TRANSCRIPT_PATH" _EVO_UQ="$USER_QUESTION" _EVO_RF="$RESP_FILE" "$PYTHON" -c "
+import json, os
 
 tp = os.environ.get('_EVO_TP', '')
 uq = os.environ.get('_EVO_UQ', '')
+rf = os.environ.get('_EVO_RF', '')
 
-if not tp or not os.path.exists(tp) or not uq:
+if not uq:
     exit(0)
 
 # 用户问题是否涉及需要搜索的主题
@@ -384,37 +387,51 @@ tech_keywords = [
 ]
 
 question_needs_search = any(kw in uq.lower() for kw in tech_keywords)
-
 if not question_needs_search:
     exit(0)
 
-# 检查 transcript 中是否有 WebSearch 或 WebFetch 调用
 has_search = False
-try:
-    with open(tp, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                entry = json.loads(line)
-            except:
-                continue
-            if entry.get('role') == 'assistant':
-                for block in entry.get('content', []):
-                    if block.get('type') == 'tool_use':
-                        name = block.get('name', '')
-                        if name in ('WebSearch', 'WebFetch', 'Agent'):
-                            has_search = True
-                            break
-                if has_search:
-                    break
-except:
-    exit(0)
+
+# 检测方式1：回答文本中包含搜索结果特征
+if rf and os.path.exists(rf):
+    try:
+        resp = open(rf, 'r', encoding='utf-8', errors='replace').read()
+        search_indicators = ['https://', 'http://', 'Sources:', 'Source:', '搜索结果',
+                             '根据搜索', 'according to', 'based on search',
+                             'github.com/', '.io/', '.com/']
+        if any(ind in resp for ind in search_indicators):
+            has_search = True
+    except:
+        pass
+
+# 检测方式2：transcript 中有 WebSearch/WebFetch/Agent 调用
+if not has_search and tp and os.path.exists(tp):
+    try:
+        with open(tp, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except:
+                    continue
+                if entry.get('role') == 'assistant':
+                    for block in entry.get('content', []):
+                        if block.get('type') == 'tool_use':
+                            name = block.get('name', '')
+                            if name in ('WebSearch', 'WebFetch', 'Agent'):
+                                has_search = True
+                                break
+                    if has_search:
+                        break
+    except:
+        pass
 
 if not has_search:
     print('BLOCK')
 " 2>/dev/null)
+  rm -f "$RESP_FILE"
 
   if [ "$SEARCH_BLOCK" = "BLOCK" ]; then
     if [ -f "$PYTHON" ]; then
