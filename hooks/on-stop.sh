@@ -356,6 +356,84 @@ with open(bfile,'a',encoding='utf-8') as f:
 fi
 
 # ================================================================
+# 强制搜索检查：涉及技术/工具/方案/数据的问题，必须先搜索再回答
+# 从 transcript 检查是否调用了 WebSearch/WebFetch，
+# 如果用户问题包含技术关键词但没搜索，拦截
+# ================================================================
+
+SEARCH_CHECK_ENABLED=$(grep -o '"quiet_mode": *true' "$CONFIG" 2>/dev/null)
+# 只在有 transcript 且有 Python 时执行
+if [ -n "$SEARCH_CHECK_ENABLED" ] && [ -n "$TRANSCRIPT_PATH" ] && [ -f "$PYTHON" ] && [ -n "$USER_QUESTION" ]; then
+  SEARCH_BLOCK=$(PYTHONUTF8=1 _EVO_TP="$TRANSCRIPT_PATH" _EVO_UQ="$USER_QUESTION" "$PYTHON" -c "
+import json, os, re
+
+tp = os.environ.get('_EVO_TP', '')
+uq = os.environ.get('_EVO_UQ', '')
+
+if not tp or not os.path.exists(tp) or not uq:
+    exit(0)
+
+# 用户问题是否涉及需要搜索的主题
+tech_keywords = [
+    '技术方案', '工具', '选型', '框架', '库', '平台', '怎么实现', '有没有办法',
+    '能不能', '有什么方法', '推荐', '对比', '哪个好', '最新', '2024', '2025', '2026',
+    'tool', 'framework', 'library', 'how to', 'is there', 'recommend', 'compare',
+    '安装', '部署', '配置', '监控', '性能', '优化', '解决方案',
+    'install', 'deploy', 'monitor', 'performance', 'solution',
+    '价格', '定价', '收费', '费用', '成本', 'pricing', 'cost',
+]
+
+question_needs_search = any(kw in uq.lower() for kw in tech_keywords)
+
+if not question_needs_search:
+    exit(0)
+
+# 检查 transcript 中是否有 WebSearch 或 WebFetch 调用
+has_search = False
+try:
+    with open(tp, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except:
+                continue
+            if entry.get('role') == 'assistant':
+                for block in entry.get('content', []):
+                    if block.get('type') == 'tool_use':
+                        name = block.get('name', '')
+                        if name in ('WebSearch', 'WebFetch', 'Agent'):
+                            has_search = True
+                            break
+                if has_search:
+                    break
+except:
+    exit(0)
+
+if not has_search:
+    print('BLOCK')
+" 2>/dev/null)
+
+  if [ "$SEARCH_BLOCK" = "BLOCK" ]; then
+    if [ -f "$PYTHON" ]; then
+      PYTHONUTF8=1 "$PYTHON" -c "
+import json,os
+entry={'time':'$TS','event':'search_block','variant':'$VARIANT'}
+bfile=os.path.join(os.path.expanduser('~'),'.claude','evolution','signals','blocks.jsonl')
+with open(bfile,'a',encoding='utf-8') as f:
+  f.write(json.dumps(entry,ensure_ascii=False)+'\n')
+" 2>/dev/null
+    fi
+    update_blocks_stat
+    touch "$BLOCK_FLAG"
+    safe_json_block "未搜索就回答技术问题" "你回答了涉及技术/工具/方案的问题但没有先搜索。请先用 WebSearch 搜索相关信息，基于搜索结果重新回答。修正后末尾加【已修正】。"
+    exit 0
+  fi
+fi
+
+# ================================================================
 # v2.3 做事型任务审查（改造1：从 transcript_path 读取工具调用和结果）
 # 触发条件：stop_reason=end_turn 且 transcript 中有工具调用
 # ================================================================
