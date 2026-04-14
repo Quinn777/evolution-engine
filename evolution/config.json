@@ -1,0 +1,11 @@
+{
+  "sonnet_review_enabled": true,
+  "sonnet_review_min_length": 400,
+  "task_review_enabled": true,
+  "breed_interval": 30,
+  "min_sessions_per_variant": 5,
+  "max_instincts": 50,
+  "variant_count": 3,
+  "regex_block_enabled": true,
+  "quiet_mode": true
+}

@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Evolution Engine runtime data (personal usage data, not for distribution)
+evolution/signals/*.jsonl
+evolution/variant_stats.json
+evolution/session_counter.txt
+evolution/evolution_log.jsonl
+evolution/initiative_examples.jsonl
+evolution/proactive_context.json
+evolution/error.log
+evolution/.last_user_question
+evolution/.recent_user_questions
+evolution/.hook_test_marker
+evolution/.rewrite_count
+evolution/.block_count
+evolution/.block_active
+evolution/.stats_lock
+evolution/.disabled
+evolution/active_variant.txt
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
