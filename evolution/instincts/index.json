@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": "inst_permanent_001",
+    "pattern": "涉及技术方案、数据、工具、平台特性时必须先搜索再回答，不能凭已有知识推测",
+    "category": "laziness",
+    "source": "user_correction",
+    "evidence_count": 99,
+    "contradicted_count": 0,
+    "created": "20260414"
+  }
+]
